@@ -1,71 +1,63 @@
 # Advanced Malware Analysis Report: Fake Volt Executor
 
-**Document Classification:** Confidential / TLP:AMBER  
-**Date of Analysis:** September 14, 2026  
-**Target:** `Volt Executor.exe`  
-**Threat Category:** Trojan / Information Stealer / Remote Access Trojan (RAT)  
+**Document Classification:** Confidential / TLP:AMBER
+**Date of Analysis:** September 14, 2026
+**Target:** `Volt Executor.exe`
+**Threat Category:** Multi-Stage Composite Threat (Trojan, Spyware, Ransomware, Cryptominer)
 
 ---
 
 ## 1. Executive Summary
 
-This report details the technical analysis of a malicious campaign masquerading as "Volt Executor," a purported script executor for the Roblox gaming platform. Distributed via highly deceptive web infrastructure, the payload is a multi-stage threat designed to compromise the host system. Upon execution, the malware establishes persistence, harvests sensitive credentials (including session cookies and cryptocurrency wallets), and opens a backdoor for remote threat actors. 
+This report details the technical analysis of a highly destructive malicious campaign masquerading as "Volt Executor," a popular script framework for the Roblox gaming platform. Threat actors are utilizing deceptive web infrastructure to impersonate the official Volt domain (`voltbz.net`) in order to distribute severe malware packages. Behavioral analysis platforms, such as Tria.ge, have flagged the fake executable with a 10/10 critical risk rating due to its wide array of destructive capabilities. 
 
 ## 2. Malware Typology & Capabilities
 
-The Fake Volt Executor is a composite threat exhibiting behaviors across three primary malware classifications:
+The Fake Volt Executor is a composite threat that exhibits overlapping behaviors across multiple severe malware classifications:
 
-*   **Trojan (Trojan.Win32.Agent.sa):** The initial vector relies on social engineering, presenting a polished GUI that mimics legitimate game modification tools to trick the user into granting execution privileges.
-*   **Information Stealer (Infostealer):** The core payload is heavily optimized for rapid data exfiltration. It targets Chromium-based and Gecko-based browsers to extract saved passwords, autofill data, and specific session tokens (notably Discord tokens and Roblox `.ROBLOSECURITY` cookies).
-*   **Remote Access Trojan (RAT):** The secondary payload establishes a persistent Command and Control (C2) connection, allowing attackers to execute arbitrary shell commands, download additional payloads, and monitor user activity.
+*   **Trojan (Trojan.Win32.Agent.sa):** The initial execution vector relies on social engineering. It presents a deceptive graphical interface that mimics the legitimate Volt game framework to trick users into granting administrative execution privileges.
+*   **Spyware & Information Stealer:** The core payload heavily focuses on unauthorized data exfiltration. It is designed to scrape browsers and system directories for saved passwords, autofill data, cryptocurrency wallet keys, and session cookies (such as Discord tokens and Roblox `.ROBLOSECURITY` cookies).
+*   **Ransomware Components:** Behavioral sandboxes have identified ransomware tagging within the executable's execution chain, indicating the potential to encrypt host files and demand payment. 
+*   **Cryptominer (Cryptojacking):** Dynamic analysis and victim telemetry indicate the presence of a silent cryptocurrency miner. Upon infection, host systems have exhibited sudden GPU power spikes (up to 260W) and 90% GPU utilization while the system is otherwise completely idle.
+*   **Defense Evasion & Discovery:** The malware actively modifies system parameters to bypass antivirus detection and maps the host system to locate valuable data.
 
-## 3. Distribution Vectors & Social Engineering
+## 3. Distribution Vectors & Domain Impersonation
 
-Threat actors distribute this malware via SEO poisoning and deceptive marketing campaigns targeting the gaming community. 
+### 3.1. Official vs. Malicious Infrastructure
+*   **The Legitimate Source:** The recognized official domain for the Volt Executor framework is `voltbz.net`. The legitimate tool is designed as a Roblox game framework and execution environment.
+*   **The Malicious Impersonators:** Threat actors utilize spoofed domains such as `getvolt.org` and `volt.com.im` to capture web traffic from users searching for the executor. 
 
-### 3.1. Web Infrastructure
-*   **Deceptive Domains:** The campaign utilizes domains such as `getvolt.org` and `volt.com.im`. These sites feature professional web design, fake user testimonials, and fabricated trust badges.
-*   **Trust Scores:** Security telemetry indicates `getvolt.org` holds a trust score of 16.5/100 (High-Risk), while `volt.com.im` holds a 12.8/100 (Untrustworthy/Danger), correlating with known phishing and malware distribution patterns.
-*   **False Authenticity:** The sites heavily promote non-existent technical features like "Hyperion bypass" (referencing Roblox's anti-cheat) and "built-in HWID spoofers" to entice users seeking unfair advantages.
-
-### 3.2. Lure Tactics
-*   **Free-Robux Lures:** Cross-promotional links on the distribution sites route users through survey scams and "Free Robux" generators, acting as a secondary monetization vector.
-*   **Social Media Amplification:** Attackers utilize automated YouTube and TikTok accounts to post "tutorials" showcasing the fake executor, with download links placed in video descriptions.
+### 3.2. Delivery Mechanisms
+*   **SEO Poisoning & Phishing:** The malicious domains are boosted in search rankings and promoted through fake YouTube tutorials. These videos often contain links routing users to the deceptive domains or through ad-revenue redirectors.
+*   **Payload Obfuscation:** The downloaded payload acts as a dropper for dozens of secondary viruses. In one documented infection, scanning the system post-execution revealed 44 new viral payloads dropped by the initial fake executable. 
 
 ## 4. Technical Analysis & Execution Flow
 
 ### 4.1. Static Analysis
-*   **File Name:** `Volt Executor.exe`
-*   **Architecture:** PE32 executable (GUI) Intel 80386
-*   **Size:** 15.38 MB (15,383,040 bytes)
-*   **Compilation:** Stripped to external PDB; targeting MS Windows. The binary is artificially inflated with junk data to evade basic file-size heuristic scanning.
+*   **File Name:** `Volt.exe` / `Volt Executor.exe`
+*   **File Type:** PE32 executable (GUI) Intel 80386
+*   **Detected Signature:** `Trojan.Win32.Agent.sa`
+*   **Behavioral Risk Score:** 10/10 Critical Risk (Tria.ge Sandbox).
 
 ### 4.2. Dynamic Analysis & Execution Chain
-1.  **Initial Execution:** Upon launch, the executable drops a legitimate-looking decoy UI while silently unpacking the malicious payload into the `%AppData%\Local\Temp` directory.
-2.  **Evasion & Defense Impairment:** The payload attempts to add exclusions to Windows Defender via PowerShell (`Add-MpPreference -ExclusionPath`) and disables localized firewall rules.
-3.  **Data Harvesting:** The Infostealer module initiates immediate memory scraping and file system searches targeting:
-    *   `%AppData%\discord\Local Storage\leveldb`
-    *   `%LocalAppData%\Google\Chrome\User Data\Default\Login Data`
-    *   Cryptocurrency wallet extensions (e.g., MetaMask, Phantom).
-4.  **Exfiltration:** Harvested data is compressed into a `.zip` archive and exfiltrated to the attacker via an encrypted POST request. In many iterations of this campaign, attackers utilize abused Discord Webhooks or Telegram API endpoints for data transmission.
-5.  **Persistence:** The RAT module establishes persistence by writing a registry key to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, ensuring the malicious process restarts upon system reboot.
+1.  **Deployment:** The executable drops a decoy interface while silently unpacking multiple malicious payloads (including the miner and spyware modules) into system directories.
+2.  **Resource Hijacking:** The cryptominer module initializes immediately, attempting to utilize maximum GPU and CPU resources for hash calculation, heavily degrading host performance.
+3.  **Data Harvesting:** The spyware module initiates memory scraping and file system searches targeting `%LocalAppData%\Google\Chrome\User Data\` and `%AppData%\discord\`.
+4.  **Defense Evasion:** The malware actively attempts to suppress defense mechanisms, blinding localized security tools and disabling Windows Defender alerts to establish long-term persistence.
 
 ## 5. Indicators of Compromise (IoCs)
 
 | Indicator Type | Value | Description |
 | :--- | :--- | :--- |
-| **Filename** | `Volt Executor.exe` | Initial dropper executable |
-| **Threat Signature** | `Trojan.Win32.Agent.sa` | Primary antivirus detection name |
-| **Domain** | `getvolt.org` | Primary distribution site (NICENIC INT. REGISTRY) |
-| **Domain** | `volt.com.im` | Secondary distribution site |
-| **IP Address** | `172.67.219.170` | Resolves to `volt.com.im` (Cloudflare routed) |
-| **Registry Key** | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\[RandomString]` | Persistence mechanism |
-| **File Path** | `%AppData%\Local\Temp\[RandomString].exe` | Unpacked payload location |
+| **Legitimate Domain** | `voltbz.net` | The official Volt Executor domain being impersonated. |
+| **Malicious Domain** | `getvolt.org` | Primary distribution site for the fake payload. |
+| **Malicious Domain** | `volt.com.im` | Secondary distribution site. |
+| **Threat Signature** | `Trojan.Win32.Agent.sa` | Primary antivirus detection name. |
+| **System Behavior** | Idle GPU > 90% usage / 260W draw | Indicator of the dropped cryptomining module. |
+| **Tria.ge Tags** | `Ransomware`, `Spyware`, `Defense Evasion` | Sandbox behavioral identifiers indicating the presence of severe payloads. |
 
 ## 6. Containment & Remediation Strategy
 
-1.  **Network Isolation:** Immediately disconnect the infected host from the corporate or home network to sever the active C2 connection and halt data exfiltration.
-2.  **Process Termination:** Identify and terminate all unauthorized processes running from the `%AppData%` and `%Temp%` directories.
-3.  **Credential Revocation:** The user must immediately reset passwords for all accounts accessed on the infected machine, prioritizing email, banking, Discord, and Roblox accounts. Active sessions (cookies) must be invalidated.
-4.  **Registry Cleanup:** Delete the malicious startup entries located in the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` hive.
-5.  **System Scanning:** Execute a full-system, out-of-band malware scan utilizing updated definitions to ensure all remnants of the dropper and payload are eradicated. A cold reboot is required to clear volatile memory.
+1.  **Immediate Isolation:** Sever the network connection to halt active data exfiltration and disrupt the cryptominer's communication with its external mining pool.
+2.  **Total System Reset (Recommended):** Due to the aggressive and destructive nature of this multi-stage threat (including potential ransomware and over 40 secondary dropped viruses), a complete system wipe and reinstallation of Windows via a clean USB drive is highly recommended. 
+3.  **Credential Revocation:** Reset all passwords from an uninfected device. Ensure all active session cookies for Discord, Roblox, and web browsers are immediately invalidated.

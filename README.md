@@ -29,7 +29,11 @@ The malicious binary is a composite "dropper" that unpacks multiple distinct typ
 
 ### Information Stealer (Spyware)
 *   **Target:** Session Tokens & Credentials
-*   **Behavior:** Immediately scours the file system to extract `.ROBLOSECURITY` cookies, Discord authentication tokens, Chromium/Gecko browser autofill data, saved passwords, and cryptocurrency wallet extensions (MetaMask, Phantom).
+*   **Behavior:** Immediately scours the file system to extract `.ROBLOSECURITY` cookies, Discord authentication tokens, Chromium/Gecko browser autofill data, saved passwords, and cryptocurrency wallet extensions (MetaMask, Phantom). Exfiltration is largely handled via automated Discord Webhook integrations.
+
+### Remote Access Trojan (RAT)
+*   **Target:** C2 Infrastructure & Backdoor Access
+*   **Behavior:** Establishes a persistent backdoor allowing threat actors to execute arbitrary commands, log keystrokes, and monitor the host system remotely.
 
 ### Cryptominer (Cryptojacking)
 *   **Behavior:** Resource Hijacking
@@ -37,24 +41,20 @@ The malicious binary is a composite "dropper" that unpacks multiple distinct typ
 
 ### Ransomware Components
 *   **Behavior:** File Encryption
-*   **Impact:** Behavioral sandboxes (such as Tria.ge) have tagged execution flows associated with file encryption. This module maps the user's Documents and Desktop directories, preparing to hold personal files hostage for a cryptocurrency ransom.
+*   **Impact:** Behavioral sandboxes have tagged execution flows associated with file encryption. This module maps the user's Documents and Desktop directories, preparing to hold personal files hostage for a cryptocurrency ransom.
 
 ### Rootkit / Defense Evasion
 *   **Target:** Antivirus Engines
 *   **Behavior:** Modifies the Windows registry to disable Windows Defender (`DisableAntiSpyware`). It actively patches the local `hosts` file, redirecting security update servers to `127.0.0.1` to blind local antivirus software.
 
-### Remote Access Trojan (RAT)
-*   **Target:** C2 Infrastructure
-*   **Behavior:** Establishes a persistent backdoor to a Command and Control server (often abusing Discord Webhooks), allowing the threat actor to execute arbitrary PowerShell commands, log keystrokes, and download further malware.
-
 ## 4. Execution Flow & Technical Analysis
 
 Upon the user launching `Volt Executor.exe` (downloaded from `voltexecutor.xyz` or associated campaign sites), the infection chain proceeds rapidly:
 
-1.  **Silent Execution:** The executable launches with zero graphical interface. It gives the illusion of "doing nothing" while performing sub-process injection in the background.
+1.  **Silent Execution:** The executable launches with zero graphical interface, giving the illusion of "doing nothing" while performing sub-process injection in the background.
 2.  **Elevation & Defense Impairment:** The payload prompts a UAC bypass, running PowerShell commands in the background to add `C:\` exclusions to Windows Defender and alter firewall rules.
 3.  **Payload Unpacking:** The 40+ secondary viruses are dropped into randomized, hidden folders within system directories.
-4.  **Data Exfiltration:** The Infostealer compresses stolen browser data and gaming session cookies into a ZIP file, transmitting it via encrypted POST requests.
+4.  **Data Exfiltration:** The Infostealer compresses stolen browser data and gaming session cookies into a ZIP file, transmitting it via encrypted POST requests (frequently utilizing Discord Webhooks).
 5.  **Resource Maximization:** The cryptominer initializes, immediately maxing out GPU thermal limits and fan speeds silently.
 6.  **Persistence:** Multiple registry keys are created in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` to ensure the malware resurrects if terminated.
 
@@ -72,4 +72,11 @@ Upon the user launching `Volt Executor.exe` (downloaded from `voltexecutor.xyz` 
 
 ---
 
-> **CRITICAL REMEDIATION PROTOCOL:** Due to the aggressive nature of this threat bundle (disabling local AV, dropping 40+ nested viruses, and potential ransomware capabilities), standard antivirus scans are insufficient. **A complete system wipe (formatting the drive and reinstalling Windows via a clean USB) is mandatory.** All passwords, Discord tokens, and Roblox sessions must be reset from a known-safe device immediately.
+## 6. External Analysis Reference
+
+For further technical insights, sandbox telemetry, and behavioral artifacts associated with this sample, you can review the full sandbox report here:  
+👉 [Hybrid Analysis Report](https://hybrid-analysis.com/sample/655ef2346345503f4c47800cf824a8c0ce4a8e897b33a1459803abdf3426802c/6aa733c33ca3885bd60ba451)
+
+---
+
+> **CRITICAL REMEDIATION PROTOCOL:** Due to the aggressive nature of this threat bundle (disabling local AV, dropping 40+ nested viruses, RAT capabilities, and potential ransomware components), standard antivirus scans are insufficient. **A complete system wipe (formatting the drive and reinstalling Windows via a clean USB) is mandatory.** All passwords, Discord tokens, and Roblox sessions must be reset from a known-safe device immediately.
